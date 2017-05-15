@@ -16,6 +16,7 @@ __date__ = '$Date: 2008/07/17  $'
 __copyright__ = 'Copyright (c) 2008 Koant'
 __license__ = 'GPL'
 
+api_key = ''
 
 from urllib import urlopen
 from xml.dom import minidom
@@ -24,17 +25,17 @@ import os.path
 import sys
 from getopt import getopt
 import random
-import Image
-import ImageDraw
-import ImageFilter
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFilter
 
 def usage():
 	print "Quick examples"
 	print "--------------"
 	print "./wallpaperfm.py -m tile -u your_lastfm_username	will generate an image with all your favorite albums tiled up in a random order."
 	print "./wallpaperfm.py -m glass -u your_lastfm_username	will generate an image with a small random collection of albums, with a glassy effect."
-	print "./wallpaperfm.py -m collage -u your_lastfm_username	will generate a random collage of your favorite albums."	
-	
+	print "./wallpaperfm.py -m collage -u your_lastfm_username	will generate a random collage of your favorite albums."
+
 	print "\nGlobal switches:"
 	print "-u, --Username: your last.fm username."
 	print "-f, --Filename: the filename where the image will be saved. Username by default."
@@ -43,8 +44,8 @@ def usage():
 	print "-i, --ImageSize: [1280x1024] size of the final image. Format: numberxnumber"
 	print "-c, --CanvasSize: size of the canvas. = image size by default."
 	print "-e, --Cache: [wpcache] path to the cache."
-	print "-x, --ExcludedList: ['http://cdn.last.fm/depth/catalogue/noimage/cover_med.gif'] excluded urls, comma separated." 
-	print "-l, --Local: use a local copy of the charts. Ideal for using it offline or being kind to the last.fm servers."	
+	print "-x, --ExcludedList: ['http://cdn.last.fm/depth/catalogue/noimage/cover_med.gif'] excluded urls, comma separated."
+	print "-l, --Local: use a local copy of the charts. Ideal for using it offline or being kind to the last.fm servers."
 
 	print "\nSpecific switches for the 'tile' mode (-m tile):"
 	print "-a, --AlbumSize: [130] size of the albums, in pixel."
@@ -52,10 +53,10 @@ def usage():
 
 	print "\nSpecific switches for the 'glass' mode (-m glass):"
 	print "-n, --AlbumNumber: [7] number of albums to show."
-	print "-d, --EndPoint: [75] controls when the shadow ends, in percentage of the album size."	
+	print "-d, --EndPoint: [75] controls when the shadow ends, in percentage of the album size."
 	print "-r, --Offset: [40] starting value of opacity for the shadow."
 
-	print "\nSpecific switches for the 'collage' mode (-m collage):"	
+	print "\nSpecific switches for the 'collage' mode (-m collage):"
 	print "-a, --AlbumSize: [250] size of the albums, in pixel."
 	print "-o, --AlbumOpacity: [90] maximum opacity of each album, from 0 to 100."
 	print "-n, --AlbumNumber: [50] number of albums to show."
@@ -77,11 +78,11 @@ def getParameters():
 	Profile['Username']='Koant'
 	Profile['Past']='overall'
 	Profile['cache']='wpcache'
-	Profile['ExcludedList']=['http://cdn.last.fm/depth/catalogue/noimage/cover_med.gif','http://cdn.last.fm/flatness/catalogue/noimage/2/default_album_medium.png','http://userserve-ak.last.fm/serve/174s/32868291.png']	
-	Profile['Limit']=50	
+	Profile['ExcludedList']=['http://cdn.last.fm/depth/catalogue/noimage/cover_med.gif','http://cdn.last.fm/flatness/catalogue/noimage/2/default_album_medium.png','http://userserve-ak.last.fm/serve/174s/32868291.png']
+	Profile['Limit']=50
 	Profile['Local']='no'
 
-	Common=dict();	
+	Common=dict();
 	Common['ImageSize']=(1280,1024)
 	Common['CanvasSize']=''
 	Common['FinalOpacity']=80
@@ -110,13 +111,13 @@ def getParameters():
 	except Exception, err:
 		print "#"*20
 		print str(err)
-		print "#"*20 
+		print "#"*20
 		usage()
 	if len(optlist)==0:
 		usage()
 	for option, value in optlist:
 		if option in ('-h','--help'):
-			usage()	
+			usage()
 		elif option in ('-m','--Mode'):				# m: mode, one of Tile,Glass or Collage
 			mode=value.lower()
 
@@ -131,7 +132,7 @@ def getParameters():
 
 		elif option in ('-t','--Past'):				# t: how far back (Common), either 3month,6month or 12month
 			Profile['Past']=value
-		
+
 		elif option in ('-x','--ExcludedList'):			# x: excluded url
 			Profile['ExcludedList'].extend(value.rsplit(','))
 
@@ -166,16 +167,16 @@ def getParameters():
 
 		elif option in ('-s','--Interspace'):			# s: interspace (Tile)
 			Tile['Interspace']=int(value)
-		
+
 		elif option in ('-d','--EndPoint'):			# d: EndPoint (Glass)
-			Glass['EndPoint']=int(value)	
-		
+			Glass['EndPoint']=int(value)
+
 		elif option in ('-r','--Offset'):			# r: Offset (Glass)
 			Glass['Offset']=int(value)
-	
+
 
 		else:
-			print "I'm not using ", option 
+			print "I'm not using ", option
 
 	if Filename=='': # by default, Filename=Username
 		Filename=Profile['Username']
@@ -195,7 +196,7 @@ def getParameters():
 ##############################
 def makeFilename(url):
 	""" Turns the url into a filename by replacing possibly annoying characters by _ """
-	url=url[7:] # remove 'http://'	
+	url=url[7:] # remove 'http://'
 	for c in ['/', ':', '?', '#', '&','%']:
 		url=url.replace(c,'_')
 	return url
@@ -222,19 +223,19 @@ def getAlbumCovers(Username='Koant',Past='overall',cache='wp_cache',ExcludedList
 	""" download album covers if necessary """
 	## Preparing the file list.
 	if Past in ('3month','6month','12month'):
-		tpe='&type='+Past
+		tpe='&period='+Past
 	else:
 		tpe=''
+	# url='http://ws.audioscrobbler.com/1.0/user/'+Username+'/topalbums.xml?limit='+str(Limit)+tpe
+	url='http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user='+Username+'&period='+tpe+'&limit='+str(Limit)+ '&api_key='+api_key
 
-	url='http://ws.audioscrobbler.com/1.0/user/'+Username+'/topalbums.xml?limit='+str(Limit)+tpe
-	
 	# make cache if doesn't exist
 	if not os.path.exists(cache):
-		print "cache directory ("+cache+") doesn't exist. I'm creating it."	
-		os.mkdir(cache)	
-	
+		print "cache directory ("+cache+") doesn't exist. I'm creating it."
+		os.mkdir(cache)
+
 	# Make a local copy of the charts
-	if Local=='no':	
+	if Local=='no':
 		try:
 			print "Downloading from ",url
 			download(url,cache+os.sep+'charts_'+Username+'.xml')
@@ -254,11 +255,11 @@ def getAlbumCovers(Username='Koant',Past='overall',cache='wp_cache',ExcludedList
 	except Exception,err:
 		print '#'*20
 		print "Error while parsing your profile. Your username might be misspelt or your charts empty."
-		print '#'*20		
+		print '#'*20
 		sys.exit()
 
-	filelist=[imfile.firstChild.data for imfile in xmldoc.getElementsByTagName('large')]
-
+	# filelist=[imfile.firstChild.data for imfile in xmldoc.getElementsByTagName('image') if imfile]
+	filelist=[imfile.firstChild.data for imfile in xmldoc.getElementsByTagName('image') if imfile and imfile.firstChild and imfile._attrs['size'].nodeValue == 'large']
 
 
 	# Exclude covers from the ExcludedList
@@ -274,12 +275,12 @@ def getAlbumCovers(Username='Koant',Past='overall',cache='wp_cache',ExcludedList
 	# download covers only if not available in the cache
 	for imfile in filelist[:]:
 		url=imfile
-		imfile=makeFilename(imfile)	
+		imfile=makeFilename(imfile)
 		if not os.path.exists(cache+os.sep+imfile):
 			print "	Downloading ",url
 			download(url,cache+os.sep+imfile)
 
-	filelist=[cache+os.sep+makeFilename(imfile) for imfile in filelist] 
+	filelist=[cache+os.sep+makeFilename(imfile) for imfile in filelist]
 
 	filelist=[imfile for imfile in filelist if IsImageFile(imfile)] # Checks the file is indeed an image
 	filelist.reverse() # changed on 02Aug2010
@@ -288,7 +289,7 @@ def getAlbumCovers(Username='Koant',Past='overall',cache='wp_cache',ExcludedList
 ##############################
 ## Tile
 ##############################
-def Tile(Profile,ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumSize=130,FinalOpacity=30,Interspace=5):
+def Tile(Profile,ImageSize=(1350,540),CanvasSize=(1350,540),AlbumSize=130,FinalOpacity=30,Interspace=5):
 	""" produce a tiling of albums covers """
 
 	imagex,imagey=ImageSize
@@ -296,11 +297,11 @@ def Tile(Profile,ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumSize=130,Fina
 
 	offsetx=(imagex-canvasx)/2
 	offsety=(imagey-canvasy)/2
-	
+
 	#number of albums on rows and columns
-	nx=(canvasx-Interspace)/(AlbumSize+Interspace) 
+	nx=(canvasx-Interspace)/(AlbumSize+Interspace)
 	ny=(canvasy-Interspace)/(AlbumSize+Interspace)
-	
+
 	# number of images to download
 	Profile['Limit']=ny*nx+len(Profile['ExcludedList'])+5 # some extra in case of 404 , even though there shouldn't be any really.
 
@@ -315,7 +316,7 @@ def Tile(Profile,ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumSize=130,Fina
 		posx,posy=(-AlbumSize+(canvasx-nx*(AlbumSize+Interspace)-Interspace)/2,posy+Interspace+AlbumSize) # location of album in the canvas
 		for i in range(0,nx):
 			posx=posx+Interspace+AlbumSize
-			if len(filelist2)==0: # better than random.choice() (minimises risk of doubles and goes through the whole list) 
+			if len(filelist2)==0: # better than random.choice() (minimises risk of doubles and goes through the whole list)
 				filelist2=list(filelist)
 				random.shuffle(filelist2)
 			imfile=filelist2.pop()
@@ -326,11 +327,11 @@ def Tile(Profile,ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumSize=130,Fina
 				print err
 				print "I couln't read that file: "+imfile
 				print "You might want to exclude its corresponding URL with -x because it probably doesn't point to an image."
-				print "#"*20				
+				print "#"*20
 				sys.exit()
-			im=im.resize((AlbumSize,AlbumSize),2)		
-			background.paste(im,(posx+offsetx,posy+offsety))		
-		
+			im=im.resize((AlbumSize,AlbumSize),2)
+			background.paste(im,(posx+offsetx,posy+offsety))
+
 	# darken the result
 	background=background.point(lambda i: FinalOpacity*i/100)
 	return background
@@ -343,26 +344,26 @@ def makeGlassMask(ImageSize,Offset=50,EndPoint=75):
 	mask=Image.new('L',ImageSize,0)
 	di=ImageDraw.Draw(mask)
 	sizex,sizey=ImageSize
-		
+
 	stop=min((EndPoint*sizey)/100,sizey)
 	E=EndPoint*sizey/100
 	O=255*Offset/100
 	for i in range(0,stop):
-		color=(255*Offset/100*-100*i)/(EndPoint*sizey)+255*Offset/100 #linear gradient		
-		#color=((i-E)*(i-E)*O)/(E*E) # quadratic gradient		
+		color=(255*Offset/100*-100*i)/(EndPoint*sizey)+255*Offset/100 #linear gradient
+		#color=((i-E)*(i-E)*O)/(E*E) # quadratic gradient
 		#color=(O*(E*E-i*i))/(E*E)
-		di.line((0,i,sizex,i),color)		
+		di.line((0,i,sizex,i),color)
 	return mask
 
 def Glass(Profile, ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumNumber=7,FinalOpacity=100,Offset=50,EndPoint=75):
-	""" Make a glassy wallpaper from album covers """ 	
+	""" Make a glassy wallpaper from album covers """
 
 	if AlbumNumber>Profile['Limit']:
 		Profile['Limit']=AlbumNumber+len(Profile['ExcludedList'])+5
-	
+
 	filelist=getAlbumCovers(**Profile)
 	imagex,imagey=ImageSize
-		
+
 	canvasx,canvasy=CanvasSize
 
 	offsetx=(imagex-canvasx)/2
@@ -371,10 +372,10 @@ def Glass(Profile, ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumNumber=7,Fi
 	background=Image.new('RGB',(imagex,imagey),0) # background
 
 	albumsize=canvasx/AlbumNumber
-	mask=makeGlassMask((albumsize,albumsize),Offset,EndPoint)	
+	mask=makeGlassMask((albumsize,albumsize),Offset,EndPoint)
 
 	posx=(canvasx-AlbumNumber*albumsize)/2-albumsize
-	
+
 	for i in range(0,AlbumNumber):
 		imfile=filelist.pop()	# assumes there are enough albums in the filelist
 		tmpfile=Image.open(imfile).convert('RGB')
@@ -387,7 +388,7 @@ def Glass(Profile, ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumNumber=7,Fi
 	background=background.point(lambda i: FinalOpacity*i/100)
 	return background
 
-############################ 
+############################
 ## Collage
 ############################
 def erfc(x):
@@ -404,7 +405,7 @@ def erfc(x):
 		c=[1.0960,   -1.5927,    0.7846 ,  -0.1305];
 	else:
 		return 0;
-	return c[0]+c[1]*x+c[2]*x*x+c[3]*x*x*x;	
+	return c[0]+c[1]*x+c[2]*x*x+c[3]*x*x*x;
 
 def makeCollageMask(size,transparency,gradientsize):
 	mask=Image.new('L',size,0)
@@ -417,24 +418,24 @@ def makeCollageMask(size,transparency,gradientsize):
 		for j in range(sizey):
 			v=c*(erfc(s2*(l-i))-erfc(s2*(sizex-l-i)))*(erfc(s2*(l-j))-erfc(s2*(sizex-l-j)))
 			mask.putpixel((i,j),int(v))
-		
+
 	return mask
 
 def Collage(Profile,ImageSize=(1280,1024),CanvasSize=(1280,1024),AlbumNumber=50,AlbumSize=300,GradientSize=20,AlbumOpacity=70,Passes=4,FinalOpacity=70):
-	""" make a collage of album covers """	
+	""" make a collage of album covers """
 
-	Profile['Limit']=min(200,max(AlbumNumber,Profile['Limit'])) 
+	Profile['Limit']=min(200,max(AlbumNumber,Profile['Limit']))
 
 	filelist=getAlbumCovers(**Profile)
 
 	imagex,imagey=ImageSize
 	canvasx,canvasy=CanvasSize
-	
+
 	background=Image.new('RGB',(imagex,imagey),0) # background
 	mask=makeCollageMask((AlbumSize,AlbumSize),AlbumOpacity,GradientSize)
-	print "Computing the collage..."	
+	print "Computing the collage..."
 	for p in range(0,Passes):
-		print "Pass ",p+1," of ",Passes	
+		print "Pass ",p+1," of ",Passes
 		for imfile in filelist:
 				tmpfile=Image.open(imfile).convert('RGB')
 				tmpfile=tmpfile.resize((AlbumSize,AlbumSize),1)
@@ -455,13 +456,13 @@ def main():
 	print "	by Koant, http://www.last.fm/user/Koant"
 	print ""
 	param=getParameters()
-	
+
 	print "Mode: "+param['Mode']
 	print "	Image will be saved as "+param['Filename']+".jpg"
 	if param['Mode']=='tile':
 		for k,v in param['Tile'].iteritems():
 			print "	"+k+": "+str(v)
-		image=Tile(param['Profile'],**param['Tile'])		
+		image=Tile(param['Profile'],**param['Tile'])
 	elif param['Mode']=='glass':
 		for k,v in param['Glass'].iteritems():
 			print "	"+k+": "+str(v)
@@ -476,6 +477,6 @@ def main():
 
 	image.save(param['Filename']+'.jpg')
 	print "Image saved as "+param['Filename']+'.jpg'
-	
+
 if __name__=="__main__":
 	main()
